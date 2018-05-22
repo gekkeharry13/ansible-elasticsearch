@@ -9,13 +9,13 @@
     owner: elasticsearch
     group: elasticsearch
     mode: 0755
+  become: true
   register: es_ssl_folder
 
 - name: Verify if elastic CA keys are present
   stat:
     path: "{{ es_ssl_config['ca_folder'] }}/elastic-ca.p12"
   become: true
-  become_user: elasticsearch
   register: es_ssl_ca_present
   when: es_ssl_folder
 
@@ -24,9 +24,17 @@
     - ES_PATH_CONF: "{{conf_dir}}"
   command: /usr/share/elasticsearch/bin/x-pack/certutil ca --silent -out {{ es_ssl_config['ca_folder'] }}/elastic-ca.p12 -pass "{{ es_ssl_config['ca_password'] }}"
   become: true
-  become_user: elasticsearch
   register: elastic_ca
   when: es_platinum_license is defined and es_ssl_config is defined and es_ssl_config['ca_password'] is defined and (not es_ssl_ca_present.stat.exists or es_ssl_config['regen_certs'])
+
+- name: "Ensure {{ es_ssl_config['ca_folder'] }}/elastic-ca.p12 has the appropriate permissions"
+  file:
+    path: "{{ es_ssl_config['ca_folder'] }}/elastic-ca.p12"
+    state: file
+    owner: elasticsearch
+    group: elasticsearch
+    mode: 0600
+  become: true
 
 - name: Check if /usr/local/share/ca-certificates/local-elastic-ca folder exists
   file:
@@ -35,12 +43,30 @@
     owner: root
     group: root
     mode: 0755
+  become: true
   register: es_ca_folder
+
+- name: Check if /usr/local/share/ca-certificates/local-elastic-ca/elastic-ca.crt exists
+  stat:
+    path: /usr/local/share/ca-certificates/local-elastic-ca/elastic-ca.crt
+  become: true
+  register: es_ca_file
 
 - name: Extract CA certificate to the trusted CA folder
   command: openssl pkcs12 -in {{ es_ssl_config['ca_folder'] }}/elastic-ca.p12 -clcerts -nokeys -out /usr/local/share/ca-certificates/local-elastic-ca/elastic-ca.crt -passin pass:{{ es_ssl_config['ca_password'] }}
-  when: es_ca_folder and es_ssl_config['ca_password'] is defined and (not es_ssl_ca_present.stat.exists or elastic_ca.changed)
+  when: not es_ca_file.stat.exists and es_ssl_config['ca_password'] is defined and (es_ssl_ca_present.stat.exists or elastic_ca.changed)
+  become: true
   register: es_ca_sytem_import_prep
+
+- name: "Ensure /usr/local/share/ca-certificates/local-elastic-ca/elastic-ca.crt has the appropriate permissions"
+  file:
+    path: "/usr/local/share/ca-certificates/local-elastic-ca/elastic-ca.crt"
+    state: file
+    owner: root
+    group: root
+    mode: 0644
+  become: true
+  when: es_ca_folder and es_ssl_config['ca_password'] is defined and (not es_ssl_ca_present.stat.exists or elastic_ca.changed)
 
 - name: Add CA certificate to cacerts
   become: true
@@ -51,7 +77,6 @@
   stat:
     path: "{{conf_dir}}/ssl/{{ es_ssl_config['dns'] }}.p12"
   become: true
-  become_user: elasticsearch
   register: es_ssl_cert_present
 
 - name: Generate SSL/TLS certificate for primary ES (required for platinum license)
@@ -59,16 +84,23 @@
     - ES_PATH_CONF: "{{conf_dir}}"
   command: /usr/share/elasticsearch/bin/x-pack/certutil cert --silent --ca {{ es_ssl_config['ca_folder'] }}/elastic-ca.p12 --ca-pass "{{ es_ssl_config['ca_password'] }}" --ip {{ es_ssl_config['ip'] }} --dns {{ es_ssl_config['dns'] }},localhost --out {{conf_dir}}/ssl/{{ es_ssl_config['dns'] }}.p12 --pass "{{ es_ssl_config['es_password'] }}"
   become: true
-  become_user: elasticsearch
   register: es_ssl_cert_generated
   when: es_ssl_config is defined and es_ssl_config['regen_certs'] or not es_ssl_cert_present.stat.exists
+
+- name: "Ensure {{conf_dir}}/ssl/{{ es_ssl_config['dns'] }}.p12 has the appropriate permissions"
+  file:
+    path: "{{conf_dir}}/ssl/{{ es_ssl_config['dns'] }}.p12"
+    state: file
+    owner: elasticsearch
+    group: elasticsearch
+    mode: 0600
+  become: true
 
 - name: Add SSL/TLS keystore password to ES keystore (required for platinum license)
   environment: 
     - ES_PATH_CONF: "{{conf_dir}}"
   shell: echo "{{ es_ssl_config['es_password'] }}" | /usr/share/elasticsearch/bin/elasticsearch-keystore add --silent xpack.security.http.ssl.keystore.secure_password -x --force
   become: true
-  become_user: elasticsearch
   when: es_ssl_cert_generated
 
 - name: Add SSL/TLS truststore password to ES keystore (required for platinum license)
@@ -76,7 +108,6 @@
     - ES_PATH_CONF: "{{conf_dir}}"
   shell: echo "{{ es_ssl_config['es_password'] }}" | /usr/share/elasticsearch/bin/elasticsearch-keystore add --silent xpack.security.http.ssl.truststore.secure_password -x --force
   become: true
-  become_user: elasticsearch
   when: es_ssl_cert_generated
 
 - name: set fact es_http_type to HTTPS

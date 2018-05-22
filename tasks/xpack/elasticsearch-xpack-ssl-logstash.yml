@@ -2,7 +2,6 @@
   stat:
     path: "{{ es_ssl_config['ca_folder'] }}/ls-{{ item }}.p12"
   become: true
-  become_user: elasticsearch
   register: es_ls_ssl_cert_present
   loop: "{{ groups['logstash_machines'] }}"
   when: groups['logstash_machines']
@@ -12,9 +11,26 @@
     - ES_PATH_CONF: "{{conf_dir}}"
   command: /usr/share/elasticsearch/bin/x-pack/certutil cert --silent --ca {{ es_ssl_config['ca_folder'] }}/elastic-ca.p12 --ca-pass "{{ es_ssl_config['ca_password'] }}" --ip "{{ hostvars[item.item].ansible_host }}" --dns {{ item.item }},localhost --out {{ es_ssl_config['ca_folder'] }}/ls-{{ item.item }}.p12 --pass "{{ es_ssl_config['es_password'] }}"
   become: true
-  become_user: elasticsearch
   when: es_ssl_config is defined and es_ssl_config['regen_certs'] or not item.stat.exists
   # with_items: "{{ es_ls_ssl_cert_present.results }}"
+  loop: "{{ es_ls_ssl_cert_present.results }}"
+
+- name: Check what Logstash Cert keys are present after generation
+  stat:
+    path: "{{ es_ssl_config['ca_folder'] }}/ls-{{ item }}.p12"
+  become: true
+  register: es_ls_ssl_cert_present
+  loop: "{{ groups['logstash_machines'] }}"
+  when: groups['logstash_machines']
+
+- name: "Ensure {{ es_ssl_config['ca_folder'] }}/ls-{{ item.item }}.p12 has the appropriate permissions"
+  file:
+    path: "{{ es_ssl_config['ca_folder'] }}/ls-{{ item.item }}.p12"
+    state: file
+    owner: elasticsearch
+    group: elasticsearch
+    mode: 0600
+  become: true
   loop: "{{ es_ls_ssl_cert_present.results }}"
 
 - name: Find logstash certificates in {{ es_ssl_config['ca_folder'] }}
@@ -42,9 +58,11 @@
     dest: /tmp/certs/
     flat: true
   loop: "{{ es_ls_ssl_cert_archives.files }}"
+  become: true
 
 - name: Fetch CA certificate from primary ES server
   fetch:
     src: /usr/local/share/ca-certificates/local-elastic-ca/elastic-ca.crt
     dest: /tmp/certs/
     flat: true
+  become: true
