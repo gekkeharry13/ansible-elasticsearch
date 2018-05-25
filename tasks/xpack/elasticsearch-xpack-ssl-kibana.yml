@@ -8,7 +8,7 @@
 - name: Generate SSL/TLS certificates for Kibana machines
   environment: 
     - ES_PATH_CONF: "{{conf_dir}}"
-  command: /usr/share/elasticsearch/bin/x-pack/certutil cert --silent --ca {{ es_ssl_config['ca_folder'] }}/elastic-ca.p12 --ca-pass "test" --ip "{{ hostvars[item.item].ansible_host }}" --dns {{ item.item }},localhost --out {{ es_ssl_config['ca_folder'] }}/kb-{{ item.item }}.zip --pem --name {{ item.item }}
+  command: /usr/share/elasticsearch/bin/x-pack/certutil cert --silent --ca {{ es_ssl_config['ca_folder'] }}/elastic-ca.p12 --ca-pass "{{ es_ssl_config['ca_password'] }}" --ip "{{ hostvars[item.item].ansible_host }}" --dns {{ item.item }},localhost --out {{ es_ssl_config['ca_folder'] }}/kb-{{ item.item }}.zip --pem --name {{ item.item }}
   become: yes
   loop: "{{ es_kb_ssl_cert_present.results }}"
   when: not es_kb_ssl_cert_present is skipped and es_ssl_config is defined and es_ssl_config['regen_certs'] or not item.stat.exists
@@ -52,7 +52,7 @@
 - name: Fetch certificates for Kibana
   fetch:
     src: "{{item.path}}"
-    dest: /tmp/certs/
+    dest: /tmp/as_ansible/certs/
     flat: true
   loop: "{{ es_kb_ssl_cert_archives.files }}"
   become: yes
@@ -60,6 +60,6 @@
 - name: Fetch CA certificate from primary ES server
   fetch:
     src: /usr/local/share/ca-certificates/local-elastic-ca/elastic-ca.crt
-    dest: /tmp/certs/
+    dest: /tmp/as_ansible/certs/
     flat: true
   become: yes
