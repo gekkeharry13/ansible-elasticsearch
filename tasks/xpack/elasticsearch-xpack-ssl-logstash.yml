@@ -11,7 +11,16 @@
     - ES_PATH_CONF: "{{conf_dir}}"
   command: /usr/share/elasticsearch/bin/x-pack/certutil cert --silent --ca {{ es_ssl_config['ca_folder'] }}/elastic-ca.p12 --ca-pass "{{ es_ssl_config['ca_password'] }}" --ip "{{ hostvars[item.item].ansible_host }}" --dns {{ item.item }},localhost --out {{ es_ssl_config['ca_folder'] }}/ls-{{ item.item }}.p12 --pass "{{ hostvars[item.item].p12_password }}"
   become: yes
-  when: es_ssl_config is defined and es_ssl_config['regen_certs'] or not item.stat.exists
+  when: es_ssl_config is defined and (es_ssl_config['regen_certs'] or not item.stat.exists) and es_version is version_compare('6.3.0', '<')
+  # with_items: "{{ es_ls_ssl_cert_present.results }}"
+  loop: "{{ es_ls_ssl_cert_present.results }}"
+
+- name: Generate SSL/TLS certificates for Logstash pipelines
+  environment: 
+    - ES_PATH_CONF: "{{conf_dir}}"
+  command: /usr/share/elasticsearch/bin/elasticsearch-certutil cert --silent --ca {{ es_ssl_config['ca_folder'] }}/elastic-ca.p12 --ca-pass "{{ es_ssl_config['ca_password'] }}" --ip "{{ hostvars[item.item].ansible_host }}" --dns {{ item.item }},localhost --out {{ es_ssl_config['ca_folder'] }}/ls-{{ item.item }}.p12 --pass "{{ hostvars[item.item].p12_password }}"
+  become: yes
+  when: es_ssl_config is defined and (es_ssl_config['regen_certs'] or not item.stat.exists) and es_version is version_compare('6.3.0', '>=')
   # with_items: "{{ es_ls_ssl_cert_present.results }}"
   loop: "{{ es_ls_ssl_cert_present.results }}"
 

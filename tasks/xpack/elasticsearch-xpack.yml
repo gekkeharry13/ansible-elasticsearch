@@ -5,6 +5,11 @@
 
 - name: include elasticsearch-xpack-install.yml
   include: elasticsearch-xpack-install.yml
+  when: es_version is version_compare('6.3.0', '<')
+
+- name: Generate SSL/TLS environment
+  include: ./elasticsearch-xpack-ssl.yml
+  when: es_version is version_compare('6.3.0', '>=')
 
 #Security configuration
 - name: include security/elasticsearch-security.yml
@@ -19,4 +24,4 @@
 - name: Set elasticsearch.keystore Permissions
   become: yes
   file: state=file path={{ conf_dir }}/elasticsearch.keystore owner={{ es_user }} group={{ es_group }}
-  when: es_enable_xpack and "security" in es_xpack_features and (es_version | version_compare('6.0.0', '>'))
+  when: es_enable_xpack and "security" in es_xpack_features and (es_version is version_compare('6.0.0', '>'))
