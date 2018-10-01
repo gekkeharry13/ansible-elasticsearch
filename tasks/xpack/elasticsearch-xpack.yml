@@ -10,6 +10,8 @@
 - name: Generate SSL/TLS environment
   include: ./elasticsearch-xpack-ssl.yml
   when: es_version is version_compare('6.3.0', '>=')
+  tags: 
+    - ssl-config
 
 #Security configuration
 - name: include security/elasticsearch-security.yml

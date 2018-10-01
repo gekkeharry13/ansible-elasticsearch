@@ -1,0 +1,63 @@
+- debug:
+    msg: "Generating pkcs8 certficate for {{item}}"
+
+- name: set fact pkcs8 cert required
+  set_fact: 
+    es_pkcs8_cert_required: true
+  when: hostvars[item].es_cert and hostvars[item].es_cert_type == "pkcs8"
+
+- name: Verify if machine Cert keys are present
+  stat:
+    path: "{{ es_ssl_config['ca_folder'] }}/{{hostvars[item].es_cert_application}}-{{ item }}.zip"
+  become: yes
+  register: es_machine_ssl_cert_present
+  when: es_pkcs8_cert_required
+
+- name: Generate SSL/TLS certificates for machine
+  environment: 
+    - ES_PATH_CONF: "{{conf_dir}}"
+  command: /usr/share/elasticsearch/bin/x-pack/certutil cert --silent --ca {{ es_ssl_config['ca_folder'] }}/elastic-ca.p12 --ca-pass "{{ es_ssl_config['ca_password'] }}" --ip "{{ hostvars[item].droplet_ip }}" --dns {{ item }},localhost --out {{ es_ssl_config['ca_folder'] }}/{{hostvars[item].es_cert_application}}-{{ item }}.zip --pem --name {{ item }}
+  become: yes
+  when:  es_ssl_config is defined and (es_ssl_config['regen_certs'] or not es_machine_ssl_cert_present.stat.exists)
+
+- name: Check if machine Cert keys are present after generation
+  stat:
+    path: "{{ es_ssl_config['ca_folder'] }}/{{hostvars[item].es_cert_application}}-{{ item }}.zip"
+  become: yes
+  register: es_machine_ssl_cert_present
+  when: es_pkcs8_cert_required
+
+- name: "Ensure the certificate has the appropriate permissions"
+  file:
+    path: "{{ es_ssl_config['ca_folder'] }}/{{hostvars[item].es_cert_application}}-{{item}}.zip"
+    state: file
+    owner: elasticsearch
+    group: elasticsearch
+    mode: 0600
+  become: yes
+  when: es_pkcs8_cert_required and es_machine_ssl_cert_present
+
+# Maybe encrypt certificates first as these are not p12 files?
+# Generate a private/public key pair
+# $ openssl genrsa -out rsa_key.pri 2048; openssl rsa -in rsa_key.pri -out rsa_key.pub -outform PEM -pubout
+# Encrypt the string using public key, and store in a file
+# $ echo "stockexchange.com" | openssl rsautl -encrypt -inkey rsa_key.pub -pubin -out secret.dat
+# Un-encrypt using private key
+# $ string=`openssl rsautl -decrypt -inkey rsa_key.pri -in secret.dat `; echo $string
+# stockexchange.com
+
+- name: Fetch certificate for machine
+  fetch:
+    src: "{{ es_ssl_config['ca_folder'] }}/{{hostvars[item].es_cert_application}}-{{item }}.zip"
+    dest: /tmp/as_ansible/certs/
+    flat: true
+  become: yes
+  when: es_pkcs8_cert_required and es_machine_ssl_cert_present
+
+- name: Fetch CA certificate from primary ES server
+  fetch:
+    src: /usr/local/share/ca-certificates/local-elastic-ca/elastic-ca.crt
+    dest: /tmp/as_ansible/certs/
+    flat: true
+  become: yes
+  when: es_pkcs8_cert_required and es_machine_ssl_cert_present

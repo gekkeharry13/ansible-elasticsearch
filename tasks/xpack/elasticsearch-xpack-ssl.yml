@@ -151,3 +151,7 @@
 ##################################### Curator certificates #####################################
 - import_tasks: elasticsearch-xpack-ssl-curator.yml
   when: groups['curator_machines'] is defined
+
+##################################### Pkcs8 certificates #####################################
+- include_tasks: elasticsearch-xpack-ssl-pkcs8.yml
+  loop: "{{groups['the_hive_machines']}}"
