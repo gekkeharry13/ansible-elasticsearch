@@ -3,8 +3,12 @@
 
 - name: set fact pkcs8 cert required
   set_fact: 
+    es_pkcs8_cert_required: false
+
+- name: set fact pkcs8 cert required
+  set_fact: 
     es_pkcs8_cert_required: true
-  when: hostvars[item].es_cert and hostvars[item].es_cert_type == "pkcs8"
+  when: hostvars[item].es_cert_required is defined and hostvars[item].es_cert_required and hostvars[item].es_cert_type == "pkcs8"
 
 - name: Verify if machine Cert keys are present
   stat:
@@ -16,9 +20,9 @@
 - name: Generate SSL/TLS certificates for machine
   environment: 
     - ES_PATH_CONF: "{{conf_dir}}"
-  command: /usr/share/elasticsearch/bin/x-pack/certutil cert --silent --ca {{ es_ssl_config['ca_folder'] }}/elastic-ca.p12 --ca-pass "{{ es_ssl_config['ca_password'] }}" --ip "{{ hostvars[item].droplet_ip }}" --dns {{ item }},localhost --out {{ es_ssl_config['ca_folder'] }}/{{hostvars[item].es_cert_application}}-{{ item }}.zip --pem --name {{ item }}
+  command: /usr/share/elasticsearch/bin/elasticsearch-certutil cert --silent --ca {{ es_ssl_config['ca_folder'] }}/elastic-ca.p12 --ca-pass "{{ es_ssl_config['ca_password'] }}" --ip "{{ hostvars[item].droplet_ip }}" --dns {{ item }},localhost --out {{ es_ssl_config['ca_folder'] }}/{{hostvars[item].es_cert_application}}-{{ item }}.zip --pem --name {{ item }}
   become: yes
-  when:  es_ssl_config is defined and (es_ssl_config['regen_certs'] or not es_machine_ssl_cert_present.stat.exists)
+  when:  es_pkcs8_cert_required and es_ssl_config is defined and (es_ssl_config['regen_certs'] or not es_machine_ssl_cert_present.stat.exists)
 
 - name: Check if machine Cert keys are present after generation
   stat:
