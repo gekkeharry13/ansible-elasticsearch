@@ -3,7 +3,7 @@
     path: "{{ es_ssl_config['ca_folder'] }}/kb-{{ item }}.zip"
   become: yes
   register: es_kb_ssl_cert_present
-  loop: "{{ groups['kibana_machines'] }}"
+  loop: "{{ groups['kibana'] }}"
 
 - name: Generate SSL/TLS certificates for Kibana machines
   environment: 
@@ -26,7 +26,7 @@
     path: "{{ es_ssl_config['ca_folder'] }}/kb-{{ item }}.zip"
   become: yes
   register: es_kb_ssl_cert_present
-  loop: "{{ groups['kibana_machines'] }}"
+  loop: "{{ groups['kibana'] }}"
 
 - name: "Ensure {{ es_ssl_config['ca_folder'] }}/kb-{{ item.item }}.zip has the appropriate permissions"
   file:

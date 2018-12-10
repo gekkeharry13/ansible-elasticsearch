@@ -3,7 +3,7 @@
     path: "{{ es_ssl_config['ca_folder'] }}/cr-{{ item }}.zip"
   become: yes
   register: es_cr_ssl_cert_present
-  loop: "{{ groups['curator_machines'] }}"
+  loop: "{{ groups['curator'] }}"
 
 - name: Generate SSL/TLS certificates for curator machines
   environment: 
@@ -26,7 +26,7 @@
     path: "{{ es_ssl_config['ca_folder'] }}/cr-{{ item }}.zip"
   become: yes
   register: es_cr_ssl_cert_present
-  loop: "{{ groups['curator_machines'] }}"
+  loop: "{{ groups['curator'] }}"
 
 - name: "Ensure {{ es_ssl_config['ca_folder'] }}/cr-{{ item.item }}.zip has the appropriate permissions"
   file:

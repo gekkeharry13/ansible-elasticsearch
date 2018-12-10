@@ -3,8 +3,8 @@
     path: "{{ es_ssl_config['ca_folder'] }}/ls-{{ item }}.p12"
   become: yes
   register: es_ls_ssl_cert_present
-  loop: "{{ groups['logstash_machines'] }}"
-  when: groups['logstash_machines']
+  loop: "{{ groups['logstash'] }}"
+  when: groups['logstash']
 
 - name: Generate SSL/TLS certificates for Logstash pipelines
   environment: 
@@ -29,8 +29,8 @@
     path: "{{ es_ssl_config['ca_folder'] }}/ls-{{ item }}.p12"
   become: yes
   register: es_ls_ssl_cert_present
-  loop: "{{ groups['logstash_machines'] }}"
-  when: groups['logstash_machines']
+  loop: "{{ groups['logstash'] }}"
+  when: groups['logstash']
 
 - name: "Ensure {{ es_ssl_config['ca_folder'] }}/ls-{{ item.item }}.p12 has the appropriate permissions"
   file:
