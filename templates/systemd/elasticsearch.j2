@@ -2,7 +2,10 @@
 Description=Elasticsearch-{{es_instance_name}}
 Documentation=http://www.elastic.co
 Wants=network-online.target
-After=network-online.target{% if es_network_storage_systemd is defined %} {{es_network_storage_systemd}} {% endif %}
+After=network-online.target
+{% if es_network_storage_systemd is defined %} 
+Requires=es_network_storage_systemd
+{% endif %}
 
 [Service]
 Environment=ES_HOME={{es_home}}
