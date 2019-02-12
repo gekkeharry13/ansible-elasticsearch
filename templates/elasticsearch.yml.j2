@@ -70,7 +70,9 @@ xpack.security.http.ssl.keystore.path: "{{ es_ssl_config['keystore'] }}"
 #Legacy config required for /usr/share/elasticsearch/bin/x-pack/setup-passwords
 xpack.security.http.ssl.keystore.password: "{{ es_ssl_config['keystore_password'] }}"
 {% endif %}
+{% if es_ssl_config['truststore'] is defined %}
 xpack.security.http.ssl.truststore.path: "{{ es_ssl_config['truststore'] }}"
+{% endif %}
 {% if es_ssl_config['truststore_password'] is defined and es_ssl_config['legacy_password_config'] %}
 #Legacy config required for /usr/share/elasticsearch/bin/x-pack/setup-passwords
 xpack.security.http.ssl.truststore.password: "{{ es_ssl_config['truststore_password'] }}"
