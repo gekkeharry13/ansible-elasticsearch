@@ -1,0 +1,73 @@
+- name: Verify if kibana Cert keys are present
+  stat:
+    path: "{{ es_ssl_config['ca_folder'] }}/kb-{{ item }}.zip"
+  become: yes
+  register: es_kb_ssl_cert_present
+  loop: "{{ groups['kibana'] }}"
+
+- name: Generate SSL/TLS certificates for Kibana machines
+  environment: 
+    - ES_PATH_CONF: "{{conf_dir}}"
+  command: /usr/share/elasticsearch/bin/x-pack/certutil cert --silent --ca {{ es_ssl_config['ca_folder'] }}/elastic-ca.p12 --ca-pass "{{ es_ssl_config['ca_password'] }}" --ip "{{ hostvars[item.item].ansible_host }}" --dns {{ item.item }},localhost --out {{ es_ssl_config['ca_folder'] }}/kb-{{ item.item }}.zip --pem --name {{ item.item }}
+  become: yes
+  loop: "{{ es_kb_ssl_cert_present.results }}"
+  when: not es_kb_ssl_cert_present is skipped and es_ssl_config is defined and (es_ssl_config['regen_certs'] or not item.stat.exists) and es_version is version_compare('6.3.0', '<')
+
+- name: Generate SSL/TLS certificates for Kibana machines
+  environment: 
+    - ES_PATH_CONF: "{{conf_dir}}"
+  command: /usr/share/elasticsearch/bin/elasticsearch-certutil cert --silent --ca {{ es_ssl_config['ca_folder'] }}/elastic-ca.p12 --ca-pass "{{ es_ssl_config['ca_password'] }}" --ip "{{ hostvars[item.item].ansible_host }}" --dns {{ item.item }},localhost --out {{ es_ssl_config['ca_folder'] }}/kb-{{ item.item }}.zip --pem --name {{ item.item }}
+  become: yes
+  loop: "{{ es_kb_ssl_cert_present.results }}"
+  when: not es_kb_ssl_cert_present is skipped and es_ssl_config is defined and (es_ssl_config['regen_certs'] or not item.stat.exists) and es_version is version_compare('6.3.0', '>=')
+
+- name: Check what kibana Cert keys are present after generation
+  stat:
+    path: "{{ es_ssl_config['ca_folder'] }}/kb-{{ item }}.zip"
+  become: yes
+  register: es_kb_ssl_cert_present
+  loop: "{{ groups['kibana'] }}"
+
+- name: "Ensure {{ es_ssl_config['ca_folder'] }}/kb-{{ item.item }}.zip has the appropriate permissions"
+  file:
+    path: "{{ es_ssl_config['ca_folder'] }}/kb-{{ item.item }}.zip"
+    state: file
+    owner: elasticsearch
+    group: elasticsearch
+    mode: 0600
+  loop: "{{ es_kb_ssl_cert_present.results }}"
+  become: yes
+
+- name: Find kibana certificates in {{ es_ssl_config['ca_folder'] }}
+  find:
+    paths: "{{ es_ssl_config['ca_folder'] }}"
+    patterns: 'kb-.*\.zip'
+    use_regex: yes
+  register: es_kb_ssl_cert_archives
+
+- debug:
+    msg: "Found Kibana certificate ZIP files: {{ es_kb_ssl_cert_archives }}"
+
+# Maybe encrypt certificates first as these are not p12 files?
+# Generate a private/public key pair
+# $ openssl genrsa -out rsa_key.pri 2048; openssl rsa -in rsa_key.pri -out rsa_key.pub -outform PEM -pubout
+# Encrypt the string using public key, and store in a file
+# $ echo "stockexchange.com" | openssl rsautl -encrypt -inkey rsa_key.pub -pubin -out secret.dat
+# Un-encrypt using private key
+# $ string=`openssl rsautl -decrypt -inkey rsa_key.pri -in secret.dat `; echo $string
+# stockexchange.com
+
+- name: Fetch certificates for Kibana
+  fetch:
+    src: "{{item.path}}"
+    dest: /tmp/as_ansible/certs/
+    flat: true
+  loop: "{{ es_kb_ssl_cert_archives.files }}"
+  become: yes
+
+- name: Fetch CA certificate from primary ES server
+  fetch:
+    src: /usr/local/share/ca-certificates/local-elastic-ca/elastic-ca.crt
+    dest: /tmp/as_ansible/certs/
+    flat: true
+  become: yes

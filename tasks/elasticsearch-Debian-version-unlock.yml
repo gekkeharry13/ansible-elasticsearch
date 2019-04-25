@@ -1,0 +1,10 @@
+---
+- name: Debian - unhold elasticsearch version
+  become: yes
+  command: apt-mark unhold elasticsearch
+  register: unhold_elasticsearch_result
+  changed_when: "unhold_elasticsearch_result.stdout != 'elasticsearch was already not hold.'"
+- name: Debian - unhold elasticsearch version with aptitude
+  become: yes
+  command: aptitude unhold elasticsearch
+  register: aptitude_unhold_elasticsearch_result
