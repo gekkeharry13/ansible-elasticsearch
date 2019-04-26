@@ -24,6 +24,21 @@
   register: system_change
   notify: restart elasticsearch
 
+- name: Add slack url to secure settings to ES keystore (required as of v7.0.0)
+  environment: 
+    - ES_PATH_CONF: "{{conf_dir}}"
+  shell: echo "{{ item.url }}" | /usr/share/elasticsearch/bin/elasticsearch-keystore add --silent xpack.notification.slack.account.{{ item.id }}.secure_url -x --force
+  become: yes
+  loop: es_slack_config
+  when: es_slack_config is defined
+
+- name: Add email password to secure settings to ES keystore (required as of v7.0.0)
+  environment: 
+    - ES_PATH_CONF: "{{conf_dir}}"
+  shell: echo "{{ es_mail_config['password'] }}" | /usr/share/elasticsearch/bin/elasticsearch-keystore add --silent xpack.notification.email.account.{{ es_mail_config['account'] }}.secure_password -x --force
+  become: yes
+  when: es_mail_config is defined and es_mail_config['require_auth'] == true
+
 #Copy the instance specific default file
 - name: Copy Default File for Instance
   become: yes

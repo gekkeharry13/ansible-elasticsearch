@@ -97,15 +97,5 @@ xpack.notification.email:
         starttls.enable: {{ es_mail_config['enable_tls'] }}
 {% if es_mail_config['require_auth'] == true %}
         user: "{{ es_mail_config['user'] }}"
-        password: "{{ es_mail_config['pass'] }}"
 {% endif %}  
-{% endif %}
-
-{% if es_slack_config is defined %}
-xpack.notification.slack:
-  account:
-    monitoring:
-      url: "{{ es_slack_config['url'] }}"
-    demo:
-      url: "{{ es_slack_config['demo_url'] }}"
 {% endif %}
