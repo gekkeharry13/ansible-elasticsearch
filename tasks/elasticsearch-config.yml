@@ -29,7 +29,7 @@
     - ES_PATH_CONF: "{{conf_dir}}"
   shell: echo "{{ item.url }}" | /usr/share/elasticsearch/bin/elasticsearch-keystore add --silent xpack.notification.slack.account.{{ item.id }}.secure_url -x --force
   become: yes
-  loop: es_slack_config
+  loop: "{{ es_slack_config }}"
   when: es_slack_config is defined
 
 - name: Add email password to secure settings to ES keystore (required as of v7.0.0)
@@ -71,7 +71,7 @@
 #Copy the logging.yml
 - name: Copy log4j2.properties File for Instance
   become: yes
-  template: src={{es_config_log4j2}} dest={{conf_dir}}/log4j2.properties owner={{ es_user }} group={{ es_group }} mode=0644 force=yes
+  copy: src=logging/{{es_config_log4j2}} dest={{conf_dir}}/log4j2.properties owner={{ es_user }} group={{ es_group }} mode=0644 force=yes
   notify: restart elasticsearch
 
 - name: Copy jvm.options File for Instance
