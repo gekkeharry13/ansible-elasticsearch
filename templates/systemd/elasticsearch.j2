@@ -4,7 +4,7 @@ Documentation=http://www.elastic.co
 Wants=network-online.target
 After=network-online.target
 {% if es_network_storage_systemd is defined %} 
-Requires=es_network_storage_systemd
+Requires={{es_network_storage_systemd}}
 {% endif %}
 
 [Service]
