@@ -44,11 +44,11 @@
 #       - xpack
 
 - name: Generate SSL/TLS environment
-  include: ./elasticsearch-xpack-ssl.yml
+  include: xpack/elasticsearch-xpack-ssl.yml
 
 #Security configuration
 - name: include security/elasticsearch-security.yml
-  include: security/elasticsearch-security.yml
+  include: xpack/security/elasticsearch-security.yml
 
 - name: flush handlers
   meta: flush_handlers
