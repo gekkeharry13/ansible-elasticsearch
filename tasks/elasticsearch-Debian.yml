@@ -19,6 +19,9 @@
   become: yes
   apt_key: url="{{ es_apt_key }}" state=present
   when: es_use_repository and es_apt_key
+  tags: 
+    - no_apt
+    - always
 
 - name: Debian - Add elasticsearch repository
   become: yes
@@ -27,6 +30,9 @@
     - { repo: "{{ es_apt_url_old }}", state: "absent" }
     - { repo: "{{ es_apt_url }}", state: "present" }
   when: es_use_repository
+  tags: 
+    - no_apt
+    - always
 
 - name: Debian - Remove version lock when upgrading
   include: elasticsearch-Debian-version-unlock.yml
