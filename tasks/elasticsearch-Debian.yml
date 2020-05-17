@@ -11,6 +11,9 @@
   become: yes
   apt: name=apt-transport-https state=present
   when: es_use_repository
+  tag: 
+    - no_es_apt
+    - always
 
 - name: Debian - Add Elasticsearch repository key
   become: yes
